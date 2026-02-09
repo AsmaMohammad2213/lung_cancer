@@ -1,0 +1,25 @@
+# Python virtual environment
+.venv
+venv
+__pycache__/
+*.pyc
+
+# Training & preprocessing code
+dataset/
+processed/
+segmented_roi/
+masks_auto/
+train_modified_unet.py
+classify.py
+extract_roi.py
+generate_masks.py
+preprocess_images.py
+
+# Git & docs
+.git
+.gitignore
+README.md
+
+# OS junk
+.DS_Store
+Thumbs.db
