@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torchvision import transforms
 from PIL import Image
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 import uuid
 
 # ----------------------------------------------------------
@@ -144,15 +144,46 @@ class_names = ['Benign case', 'Malignant case', 'Normal case']  # Replace with y
 def index():
     return render_template('index.html')
 
+# @app.route('/predict', methods=['POST'])
+# def predict():
+#     if 'image' not in request.files:
+#         return redirect(request.url)
+#     file = request.files['image']
+#     if file.filename == '':
+#         return redirect(request.url)
+
+#     filename = f"{uuid.uuid4().hex}_{file.filename}"  # ✅ define before print
+#     print(f"Uploaded file: {filename}")
+
+#     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+#     file.save(filepath)
+
+#     image = Image.open(filepath).convert('L')
+#     input_tensor = transform(image).unsqueeze(0).to(device)
+
+#     with torch.no_grad():
+#         output = model(input_tensor)
+#         probs = torch.softmax(output, dim=1).cpu().numpy()[0]
+#         predicted_idx = probs.argmax()
+#         predicted_class = class_names[predicted_idx]
+#         confidence = probs[predicted_idx] * 100
+
+#     return render_template('result.html',
+#                            filename=filename,
+#                            predicted_class=predicted_class,
+#                            confidence=confidence,
+#                            probs=zip(class_names, probs))
+    
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'image' not in request.files:
-        return redirect(request.url)
+        return jsonify({"error": "No image uploaded"}), 400
+    
     file = request.files['image']
     if file.filename == '':
-        return redirect(request.url)
+        return jsonify({"error": "Empty filename"}), 400
 
-    filename = f"{uuid.uuid4().hex}_{file.filename}"  # ✅ define before print
+    filename = f"{uuid.uuid4().hex}_{file.filename}"
     print(f"Uploaded file: {filename}")
 
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -164,15 +195,20 @@ def predict():
     with torch.no_grad():
         output = model(input_tensor)
         probs = torch.softmax(output, dim=1).cpu().numpy()[0]
-        predicted_idx = probs.argmax()
-        predicted_class = class_names[predicted_idx]
-        confidence = probs[predicted_idx] * 100
 
-    return render_template('result.html',
-                           filename=filename,
-                           predicted_class=predicted_class,
-                           confidence=confidence,
-                           probs=zip(class_names, probs))
+    predicted_idx = int(probs.argmax())
+    predicted_class = class_names[predicted_idx]
+    confidence = float(probs[predicted_idx] * 100)
+
+    return jsonify({
+        "predicted_class": predicted_class,
+        "confidence": confidence,
+        "probs": [
+            {"name": class_names[i], "prob": float(probs[i])}
+            for i in range(len(class_names))
+        ]
+    })
+
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
